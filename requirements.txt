@@ -1,0 +1,7 @@
+streamlit
+pandas
+torch
+transformers
+Pillow
+jinja2
+weasyprint
