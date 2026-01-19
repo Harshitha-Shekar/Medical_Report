@@ -9,13 +9,22 @@ from PIL import Image, ImageDraw
 import numpy as np
 
 # Try to import transformers, but make it optional
-try:
-    from transformers import AutoTokenizer, AutoModelForCausalLM
-    import torch
-    TRANSFORMERS_AVAILABLE = True
-except ImportError:
+import os
+
+# Disable BioGPT on Streamlit Cloud to avoid memory issues
+STREAMLIT_CLOUD = os.environ.get('STREAMLIT_RUNTIME_ENVIRONMENT') == 'cloud'
+
+if STREAMLIT_CLOUD:
     TRANSFORMERS_AVAILABLE = False
-    st.warning("⚠️ Transformers library not available. Using fallback text generation.")
+else:
+    # Try to import transformers, but make it optional
+    try:
+        from transformers import AutoTokenizer, AutoModelForCausalLM
+        import torch
+        TRANSFORMERS_AVAILABLE = True
+    except ImportError:
+        TRANSFORMERS_AVAILABLE = False
+        st.warning("⚠️ Transformers library not available. Using fallback text generation.")
 
 # Try to import pdfkit and weasyprint for PDF generation
 try:
@@ -540,6 +549,11 @@ class TemplateStrings:
 # =========================================================
 @st.cache_resource
 def load_biogpt_model():
+    # Don't load model on Streamlit Cloud
+    if os.environ.get('STREAMLIT_RUNTIME_ENVIRONMENT') == 'cloud':
+        st.info("💡 Running in cloud mode with optimized text generation.")
+        return None, None
+    
     if not TRANSFORMERS_AVAILABLE:
         return None, None
     
