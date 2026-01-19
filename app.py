@@ -51,15 +51,15 @@ st.markdown("""
 }
 
 body {
-    background-color:#9CC6DB;
+    background-color:#F5F2F2;
 }
 
 .stApp {
-    background-color:#9CC6DB;
+    background-color:#F5F2F2;
 }
 
 .appview-container .main .block-container {
-    background-color:#9CC6DB;
+    background-color:#F5F2F2;
 }
 
 .section-header{
@@ -84,6 +84,46 @@ body {
 
 </style>
 """, unsafe_allow_html=True)
+
+st.markdown("""
+<style>
+
+/* ===== FIX INPUT VISIBILITY ===== */
+.stTextInput input,
+.stTextArea textarea,
+.stSelectbox div[data-baseweb="select"] > div {
+    background-color: #ffffff !important;
+    color: #000000 !important;
+    border: 2px solid #1f6fb2 !important;
+    border-radius: 6px !important;
+    font-size: 15px !important;
+}
+
+/* Placeholder text */
+.stTextInput input::placeholder,
+.stTextArea textarea::placeholder {
+    color: #6b6b6b !important;
+    opacity: 1 !important;
+}
+
+/* Input labels */
+label {
+    font-weight: 700 !important;
+    color: #022869 !important;
+    font-size: 15px !important;
+}
+
+/* Focus (when user clicks input) */
+.stTextInput input:focus,
+.stTextArea textarea:focus {
+    outline: none !important;
+    border: 2px solid #f44336 !important;
+    box-shadow: 0 0 6px rgba(244,67,54,0.4) !important;
+}
+
+</style>
+""", unsafe_allow_html=True)
+
 
 
 # ===============================
