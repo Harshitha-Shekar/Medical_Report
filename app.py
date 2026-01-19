@@ -26,21 +26,24 @@ else:
         TRANSFORMERS_AVAILABLE = False
         st.warning("⚠️ Transformers library not available. Using fallback text generation.")
 
-# Try to import pdfkit and weasyprint for PDF generation
-try:
-    from weasyprint import HTML
-    PDF_AVAILABLE = True
-    PDF_METHOD = "weasyprint"
-except ImportError:
+# Disable PDF generation on Streamlit Cloud
+if os.environ.get('STREAMLIT_RUNTIME_ENVIRONMENT') == 'cloud':
+    PDF_AVAILABLE = False
+    PDF_METHOD = None
+else:
+    # Try to import pdfkit and weasyprint for PDF generation (local only)
     try:
-        import pdfkit
+        from weasyprint import HTML
         PDF_AVAILABLE = True
-        PDF_METHOD = "pdfkit"
+        PDF_METHOD = "weasyprint"
     except ImportError:
-        PDF_AVAILABLE = False
-        PDF_METHOD = None
-        st.warning("⚠️ PDF generation libraries not available. Install weasyprint or pdfkit for PDF downloads.")
-
+        try:
+            import pdfkit
+            PDF_AVAILABLE = True
+            PDF_METHOD = "pdfkit"
+        except ImportError:
+            PDF_AVAILABLE = False
+            PDF_METHOD = None
 
 # =========================================================
 #                    GLOBAL PAGE CONFIG
