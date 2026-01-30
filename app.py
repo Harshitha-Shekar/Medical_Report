@@ -106,7 +106,7 @@ st.markdown("""
 .stSelectbox div[data-baseweb="select"] > div {
     background-color: #ffffff !important;
     color: #000000 !important;
-    border: 2px solid #1f6fb2 !important;
+    border: 1px solid #1f6fb2 !important;
     border-radius: 6px !important;
     font-size: 15px !important;
 }
@@ -235,31 +235,57 @@ If the person already exists in the system, their profile will automatically loa
 
 
 # =========================================================
-#                KNOWLEDGE BASE
+#                KNOWLEDGE BASE (MODIFIED TO USE CSV)
 # =========================================================
 class MedicalKnowledgeBase:
     def __init__(self, patients_db_path: str = "patients.csv"):
         self.patients_db_path = patients_db_path
         self.patients = self._load_patients_from_csv()
+        
+        # Load blood tests and scans CSV files
+        try:
+            for encoding in ['utf-8', 'latin-1', 'cp1252', 'iso-8859-1']:
+                try:
+                    self.blood_tests_df = pd.read_csv("blood_tests.csv", encoding=encoding)
+                    self.blood_tests_df.fillna('', inplace=True)
+                    break
+                except UnicodeDecodeError:
+                    continue
+        except FileNotFoundError:
+            st.error("❌ blood_tests.csv not found!")
+            self.blood_tests_df = pd.DataFrame()
+            
+        try:
+            for encoding in ['utf-8', 'latin-1', 'cp1252', 'iso-8859-1']:
+                try:
+                    self.scans_df = pd.read_csv("scans.csv", encoding=encoding)
+                    self.scans_df.fillna('', inplace=True)
+                    break
+                except UnicodeDecodeError:
+                    continue
+        except FileNotFoundError:
+            st.error("❌ scans.csv not found!")
+            self.scans_df = pd.DataFrame()
 
     def _load_patients_from_csv(self) -> Dict[str, Any]:
         try:
-            df = pd.read_csv(self.patients_db_path)
-            df.fillna('', inplace=True)
-            if 'patient_name' in df.columns:
-                df.drop_duplicates(subset=['patient_name'], keep='first', inplace=True)
-            return df.set_index('patient_name').to_dict('index')
+            # Try multiple encodings
+            for encoding in ['utf-8', 'latin-1', 'cp1252', 'iso-8859-1']:
+                try:
+                    df = pd.read_csv(self.patients_db_path, encoding=encoding)
+                    df.fillna('', inplace=True)
+                    if 'patient_name' in df.columns:
+                        df.drop_duplicates(subset=['patient_name'], keep='first', inplace=True)
+                    return df.set_index('patient_name').to_dict('index')
+                except UnicodeDecodeError:
+                    continue
+            
+            # If all encodings fail, show error
+            st.error("❌ Could not decode patients.csv with any standard encoding")
+            return {}
         except FileNotFoundError:
-            return {
-                "John Doe": {
-                    "patient_name": "John Doe",
-                    "age": 45,
-                    "gender": "Male",
-                    "clinical_query":
-                    "The patient has been complaining of excessive thirst, frequent urination, and fatigue for the past 2 weeks.",
-                    "medical_history": "Hypertension diagnosed in 2019."
-                }
-            }
+            st.error("❌ patients.csv not found!")
+            return {}
 
     def search_patient_by_name(self, name: str) -> Optional[Dict[str, Any]]:
         if not name:
@@ -268,6 +294,22 @@ class MedicalKnowledgeBase:
             if str(p_name).lower().strip() == str(name).lower().strip():
                 return data
         return None
+    
+    def get_blood_tests(self, patient_name: str) -> list:
+        """Get blood test results for a patient from CSV"""
+        if self.blood_tests_df.empty:
+            return []
+        
+        tests = self.blood_tests_df[self.blood_tests_df['patient_name'].str.lower() == patient_name.lower()]
+        return tests.to_dict('records')
+    
+    def get_scans(self, patient_name: str) -> list:
+        """Get scan results for a patient from CSV"""
+        if self.scans_df.empty:
+            return []
+        
+        scans = self.scans_df[self.scans_df['patient_name'].str.lower() == patient_name.lower()]
+        return scans.to_dict('records')
 
 
 
@@ -379,7 +421,7 @@ class TemplateStrings:
             </tr>
             <tr>
                 <td>Referring Physician:</td>
-                <td>Dr. A. Kumar, MD</td>
+                <td>Dr. A. Kumar, MD (Cardiology)</td>
             </tr>
         </table>
     </div>
@@ -399,7 +441,7 @@ class TemplateStrings:
 
         {% for t in report.test_results %}
         <tr style="{% if t.flag != 'N' %}background: #fff3e0;{% endif %}">
-            <td style="padding: 8px;">{{ t.test }}</td>
+            <td style="padding: 8px;">{{ t.test_name }}</td>
             <td style="text-align: center;"><strong>{{ t.result }}</strong></td>
             <td style="text-align: center;">{{ t.range }}</td>
             <td style="text-align: center;">
@@ -439,22 +481,22 @@ class TemplateStrings:
 
     RADIOLOGY_TEMPLATE = SHARED_BASE + """
     <div class="section-title">SECTION A — EXAMINATION DETAILS</div>
+    
+    {% for scan in report.scans %}
     <div class="box">
+        <h3 style="color: #022869; font-size: 15px; margin-top: 0;">{{ scan.scan_type }}</h3>
         <table style="width: 100%; font-size: 13px; line-height: 1.8;">
             <tr>
-                <td style="width: 150px; font-weight: bold;">Study Performed:</td>
-                <td>{{ report.specific_tests[0] }}</td>
+                <td style="width: 150px; font-weight: bold;">Findings:</td>
+                <td>{{ scan.findings }}</td>
             </tr>
             <tr>
-                <td style="font-weight: bold;">Clinical Indication:</td>
-                <td>{{ patient.clinical_query }}</td>
-            </tr>
-            <tr>
-                <td style="font-weight: bold;">Technique:</td>
-                <td>Standard radiographic protocol</td>
+                <td style="font-weight: bold;">Interpretation:</td>
+                <td>{{ scan.interpretation }}</td>
             </tr>
         </table>
     </div>
+    {% endfor %}
 
     <div class="section-title">SECTION B — RECOMMENDATIONS</div>
     <div class="box">
@@ -482,46 +524,96 @@ class TemplateStrings:
 
     <div class="section-title">SECTION A — CLINICAL SUMMARY</div>
     
-    <h3 style="color: #022869; font-size: 15px; margin: 20px 0 10px 0;">1. History of Present Illness</h3>
+    <h3 style="color: #022869; font-size: 15px; margin: 20px 0 10px 0;">1. Chief Complaint</h3>
     <div class="box" style="line-height: 1.7;">
-        {{ diagnosis.clinical_summary.history_of_present_illness }}
+        {{ patient.clinical_query }}
     </div>
 
-    <h3 style="color: #022869; font-size: 15px; margin: 20px 0 10px 0;">2. Risk Factors</h3>
+    <h3 style="color: #022869; font-size: 15px; margin: 20px 0 10px 0;">2. History of Present Illness</h3>
     <div class="box" style="line-height: 1.7;">
-        <ul style="margin: 0; padding-left: 20px;">
+        {{ diagnosis.history_description }}
+    </div>
+
+    <div class="section-title">SECTION B — RISK FACTORS</div>
+    <div class="box" style="line-height: 1.7;">
+        <ul style="margin: 0; padding-left: 20px; line-height: 2.0;">
+            {% if patient.risk_factors %}
+            {% for risk in patient.risk_factors.split(',') %}
+            <li>{{ risk.strip() }}</li>
+            {% endfor %}
+            {% else %}
             <li>Medical History: {{ patient.medical_history }}</li>
             <li>Age: {{ patient.age }} years</li>
             <li>Gender: {{ patient.gender }}</li>
+            {% endif %}
         </ul>
     </div>
 
-    <div class="section-title">SECTION B — DIAGNOSTIC FINDINGS SUMMARY</div>
+    <div class="section-title">SECTION C — PHYSICAL EXAMINATION</div>
     
-    <h3 style="color: #022869; font-size: 15px; margin: 20px 0 10px 0;">Laboratory Interpretation</h3>
+    {% if patient.physical_exam %}
+    <div class="box" style="line-height: 1.7;">
+        <strong>General</strong><br>
+        {{ patient.physical_exam }}
+    </div>
+    {% else %}
+    <div class="box" style="line-height: 1.7;">
+        <strong>General</strong>
+        <ul style="margin: 5px 0; padding-left: 20px;">
+            <li>Patient alert and oriented</li>
+            <li>Vital signs stable</li>
+        </ul>
+    </div>
+    {% endif %}
+
+    <div class="section-title">SECTION D — ECG INTERPRETATION (12-LEAD)</div>
+    <div class="box" style="line-height: 1.7;">
+        <strong>Findings</strong>
+        <ul style="margin: 10px 0; padding-left: 20px;">
+            {% for scan in diagnosis.ecg_findings %}
+            <li>{{ scan }}</li>
+            {% endfor %}
+        </ul>
+        <strong style="margin-top: 15px; display: block;">Conclusion:</strong> {{ diagnosis.ecg_conclusion }}
+    </div>
+
+    <div class="section-title">SECTION E — LAB INVESTIGATIONS</div>
+    
+    <h3 style="color: #022869; font-size: 15px; margin: 20px 0 10px 0;">1. Laboratory Results Summary</h3>
     <div class="box" style="line-height: 1.7; background: #f0f8ff;">
         {{ diagnosis.lab_interpretation }}
     </div>
 
-    <h3 style="color: #022869; font-size: 15px; margin: 20px 0 10px 0;">Imaging Interpretation</h3>
+    <h3 style="color: #022869; font-size: 15px; margin: 20px 0 10px 0;">2. Key Findings</h3>
+    <div class="box" style="line-height: 1.7;">
+        {{ diagnosis.lab_key_findings }}
+    </div>
+
+    <div class="section-title">SECTION F — IMAGING STUDIES</div>
+    
+    <h3 style="color: #022869; font-size: 15px; margin: 20px 0 10px 0;">Findings</h3>
     <div class="box" style="line-height: 1.7; background: #f0f8ff;">
         {{ diagnosis.imaging_interpretation }}
     </div>
 
-    <div class="section-title">SECTION C — FINAL IMPRESSION</div>
+    <h3 style="color: #022869; font-size: 15px; margin: 20px 0 10px 0;">Summary</h3>
+    <div class="box" style="line-height: 1.7;">
+        {{ diagnosis.imaging_summary }}
+    </div>
+
+    <div class="section-title">SECTION G — FINAL DIAGNOSIS & IMPRESSION</div>
     <div class="box" style="background:#fff3e0; border-left: 5px solid #ff9800; padding: 20px;">
         <strong style="font-size: 15px; color: #e65100; line-height: 1.8;">
             {{ diagnosis.impression }}
         </strong>
     </div>
 
-    <div class="section-title">SECTION D — CLINICAL RECOMMENDATIONS</div>
+    <div class="section-title">SECTION H — MANAGEMENT & RECOMMENDATIONS</div>
     <div class="box">
         <ul style="line-height: 1.8; margin: 0; padding-left: 20px;">
-            <li>Immediate medical consultation recommended</li>
-            <li>Follow-up investigations as clinically indicated</li>
-            <li>Lifestyle modifications and risk factor management</li>
-            <li>Regular monitoring of relevant parameters</li>
+            {% for rec in diagnosis.recommendations %}
+            <li style="margin-bottom: 8px;">{{ rec }}</li>
+            {% endfor %}
         </ul>
     </div>
 
@@ -573,486 +665,13 @@ def load_biogpt_model():
 
 
 class MedicalLLMInterface:
-    def __init__(self):
+    def __init__(self, kb):
         self.model, self.tokenizer = load_biogpt_model()
-
-    def _generate_text_fallback(self, prompt, context):
-        """Fallback text generation when BioGPT is not available"""
-        query_lower = context.get('query', '').lower()
-        age = context.get('age', 'unknown')
-        gender = context.get('gender', 'unknown')
-        
-        # Generate context-aware clinical text
-        if 'lab' in prompt.lower():
-            if any(kw in query_lower for kw in ['thirst', 'urination', 'fatigue', 'diabetes']):
-                return f"Laboratory findings for this {age}-year-old {gender} patient reveal elevated fasting glucose (165 mg/dL) and HbA1c (8.2%), consistent with uncontrolled diabetes mellitus. The lipid panel shows dyslipidemia with elevated total cholesterol, LDL, and triglycerides, alongside reduced HDL levels. Complete blood count and renal function tests remain within normal limits. These findings suggest metabolic syndrome requiring comprehensive diabetes management and cardiovascular risk modification."
-            else:
-                return f"Laboratory analysis shows some metabolic abnormalities requiring clinical correlation. Baseline hematology and organ function parameters are within acceptable limits."
-        
-        elif 'imaging' in prompt.lower() or 'radiological' in prompt.lower():
-            if any(kw in query_lower for kw in ['chest', 'cough', 'breath', 'lung']):
-                return "No acute cardiopulmonary abnormality detected on chest radiography. Lung fields are clear bilaterally without focal consolidation, pleural effusion, or pneumothorax. Cardiac silhouette is within normal limits."
-            else:
-                return "Imaging study demonstrates no acute abnormality. Clinical correlation recommended."
-        
-        elif 'diagnosis' in prompt.lower() or 'impression' in prompt.lower():
-            if any(kw in query_lower for kw in ['thirst', 'urination', 'fatigue', 'diabetes']):
-                return f"Based on clinical presentation and diagnostic workup, this {age}-year-old {gender} patient demonstrates features consistent with Type 2 Diabetes Mellitus with associated dyslipidemia. The constellation of elevated glucose markers (fasting glucose 165 mg/dL, HbA1c 8.2%) alongside metabolic syndrome components indicates need for comprehensive diabetes management including pharmacotherapy, lifestyle modification, and cardiovascular risk factor control. Regular monitoring and endocrinology follow-up recommended."
-            else:
-                return f"Clinical assessment suggests metabolic dysfunction requiring medical management and lifestyle modifications. Close monitoring and appropriate follow-up are recommended for this {age}-year-old {gender} patient."
-        
-        return "Clinical interpretation generated based on patient presentation and diagnostic findings."
-
-    def _generate_text(self, prompt, max_tokens=150, context=None):
-        """Generate text using BioGPT or fallback"""
-        if not self.model or not self.tokenizer:
-            return self._generate_text_fallback(prompt, context or {})
-        
-        try:
-            inputs = self.tokenizer(prompt, return_tensors="pt", truncation=True, max_length=512)
-            
-            with torch.no_grad():
-                outputs = self.model.generate(
-                    **inputs,
-                    max_new_tokens=max_tokens,
-                    num_beams=5,
-                    early_stopping=True,
-                    no_repeat_ngram_size=3,
-                    temperature=0.7,
-                    do_sample=True,
-                    top_p=0.9
-                )
-            
-            generated_text = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
-            
-            if prompt in generated_text:
-                generated_text = generated_text.replace(prompt, "").strip()
-            
-            return generated_text if generated_text else self._generate_text_fallback(prompt, context or {})
-        except Exception as e:
-            return self._generate_text_fallback(prompt, context or {})
-
-    def _generate_lab_results(self, query, age, gender):
-        """Generate lab results based on symptoms"""
-        results = []
-        
-        # Diabetes-related symptoms
-        if any(keyword in query.lower() for keyword in ["thirst", "urination", "urinate", "fatigue", "tired"]):
-            results.extend([
-                {"test": "Fasting Glucose", "result": "165", "flag": "H", "range": "70-99 mg/dL"},
-                {"test": "HbA1c", "result": "8.2", "flag": "H", "range": "4.0-5.6 %"},
-                {"test": "Random Blood Sugar", "result": "210", "flag": "H", "range": "70-140 mg/dL"},
-            ])
-        
-        # Standard CBC
-        results.extend([
-            {"test": "WBC Count", "result": "8.5", "flag": "N", "range": "4.0-10.0 K/uL"},
-            {"test": "Hemoglobin", "result": "14.2", "flag": "N", "range": "12.0-16.0 g/dL"},
-            {"test": "Platelets", "result": "245", "flag": "N", "range": "150-400 K/uL"},
-        ])
-        
-        # Lipid panel
-        results.extend([
-            {"test": "Total Cholesterol", "result": "215", "flag": "H", "range": "<200 mg/dL"},
-            {"test": "LDL Cholesterol", "result": "140", "flag": "H", "range": "<100 mg/dL"},
-            {"test": "HDL Cholesterol", "result": "38", "flag": "L", "range": ">40 mg/dL"},
-            {"test": "Triglycerides", "result": "185", "flag": "H", "range": "<150 mg/dL"},
-        ])
-        
-        # Kidney function
-        results.extend([
-            {"test": "Creatinine", "result": "0.9", "flag": "N", "range": "0.6-1.2 mg/dL"},
-            {"test": "BUN", "result": "16", "flag": "N", "range": "7-20 mg/dL"},
-            {"test": "eGFR", "result": "95", "flag": "N", "range": ">60 mL/min"},
-        ])
-        
-        # Liver function
-        results.extend([
-            {"test": "ALT", "result": "28", "flag": "N", "range": "7-56 U/L"},
-            {"test": "AST", "result": "32", "flag": "N", "range": "10-40 U/L"},
-        ])
-        
-        return results
-
-    def _generate_xray_image(self):
-        """Generate a realistic X-ray-like medical image placeholder"""
-        width, height = 500, 500
-        
-        # Create gradient background
-        img_array = np.zeros((height, width), dtype=np.uint8)
-        for i in range(height):
-            for j in range(width):
-                distance = np.sqrt((i - height/2)**2 + (j - width/2)**2)
-                max_distance = np.sqrt((height/2)**2 + (width/2)**2)
-                value = int(180 - (distance / max_distance) * 80)
-                img_array[i, j] = value
-        
-        img = Image.fromarray(img_array, mode='L')
-        draw = ImageDraw.Draw(img)
-        
-        # Add anatomical shapes
-        draw.ellipse([80, 120, 220, 360], fill=200, outline=150, width=2)
-        draw.ellipse([280, 120, 420, 360], fill=200, outline=150, width=2)
-        draw.ellipse([190, 260, 310, 400], fill=130, outline=100, width=2)
-        draw.rectangle([235, 50, 265, 450], fill=120)
-        draw.arc([100, 80, 200, 140], start=180, end=0, fill=140, width=3)
-        draw.arc([300, 80, 400, 140], start=180, end=0, fill=140, width=3)
-        
-        try:
-            draw.text((20, 20), "CHEST X-RAY - PA VIEW", fill=240)
-            draw.text((20, height-30), "Simulated Radiograph", fill=240)
-            draw.text((width-150, height-30), "R", fill=240)
-        except:
-            pass
-        
-        buf = BytesIO()
-        img.save(buf, format="PNG")
-        return f"data:image/png;base64,{base64.b64encode(buf.getvalue()).decode()}"
-
-    def generate_detailed_lab_summary(self, test_results, interpretation, patient):
-        """Generate comprehensive lab summary"""
-        high_results = [t for t in test_results if t['flag'] == 'H']
-        low_results = [t for t in test_results if t['flag'] == 'L']
-        normal_results = [t for t in test_results if t['flag'] == 'N']
-        
-        summary_parts = []
-        
-        summary_parts.append("<h4 style='color:#e65100; margin-top:0;'>Overall Assessment:</h4>")
-        if len(high_results) >= 3:
-            summary_parts.append(f"<p>The laboratory panel reveals <strong>{len(high_results)} elevated parameters</strong> and <strong>{len(low_results)} decreased parameters</strong>, indicating significant metabolic abnormalities requiring immediate clinical attention. Out of {len(test_results)} total tests performed, {len(normal_results)} parameters remain within normal limits.</p>")
-        elif high_results or low_results:
-            summary_parts.append(f"<p>The laboratory evaluation shows <strong>{len(high_results) + len(low_results)} abnormal values</strong> out of {len(test_results)} tests performed, warranting further clinical correlation. {len(normal_results)} parameters are within reference ranges.</p>")
-        else:
-            summary_parts.append(f"<p>All {len(test_results)} laboratory parameters tested are within normal reference ranges.</p>")
-        
-        summary_parts.append("<h4 style='color:#e65100; margin-top:20px;'>Detailed Analysis by System:</h4>")
-        
-        # 1. Glucose Metabolism
-        glucose_tests = [t for t in test_results if any(x in t['test'].lower() for x in ['glucose', 'hba1c', 'sugar'])]
-        if glucose_tests:
-            summary_parts.append("<p><strong>🔹 Glucose Metabolism:</strong></p><ul>")
-            for test in glucose_tests:
-                status_word = "elevated" if test['flag'] == 'H' else "decreased" if test['flag'] == 'L' else "normal"
-                summary_parts.append(f"<li><strong>{test['test']}:</strong> {test['result']} ({status_word}, reference: {test['range']})")
-                
-                if 'glucose' in test['test'].lower() and test['flag'] == 'H':
-                    summary_parts.append(" - This elevation suggests impaired glucose regulation, consistent with prediabetes or diabetes mellitus.")
-                elif 'hba1c' in test['test'].lower() and test['flag'] == 'H':
-                    summary_parts.append(" - HbA1c reflects average blood glucose over the past 2-3 months. This elevated level indicates poor long-term glycemic control and increased risk of diabetic complications.")
-                
-                summary_parts.append("</li>")
-            summary_parts.append("</ul>")
-        
-        # 2. Lipid Profile
-        lipid_tests = [t for t in test_results if any(x in t['test'].lower() for x in ['cholesterol', 'ldl', 'hdl', 'triglyceride'])]
-        if lipid_tests:
-            summary_parts.append("<p><strong>🔹 Lipid Profile:</strong></p><ul>")
-            for test in lipid_tests:
-                status_word = "elevated" if test['flag'] == 'H' else "decreased" if test['flag'] == 'L' else "within normal limits"
-                summary_parts.append(f"<li><strong>{test['test']}:</strong> {test['result']} ({status_word}, reference: {test['range']})")
-                
-                if 'total cholesterol' in test['test'].lower() and test['flag'] == 'H':
-                    summary_parts.append(" - Elevated total cholesterol increases cardiovascular disease risk.")
-                elif 'ldl' in test['test'].lower() and test['flag'] == 'H':
-                    summary_parts.append(" - High LDL ('bad cholesterol') contributes to atherosclerotic plaque formation and coronary artery disease.")
-                elif 'hdl' in test['test'].lower() and test['flag'] == 'L':
-                    summary_parts.append(" - Low HDL ('good cholesterol') reduces protective cardiovascular effects and increases cardiac risk.")
-                elif 'triglyceride' in test['test'].lower() and test['flag'] == 'H':
-                    summary_parts.append(" - Elevated triglycerides may indicate metabolic syndrome and increase pancreatitis risk.")
-                
-                summary_parts.append("</li>")
-            summary_parts.append("</ul>")
-        
-        # 3. Complete Blood Count
-        cbc_tests = [t for t in test_results if any(x in t['test'].lower() for x in ['wbc', 'hemoglobin', 'platelet'])]
-        if cbc_tests:
-            summary_parts.append("<p><strong>🔹 Complete Blood Count (CBC):</strong></p><ul>")
-            for test in cbc_tests:
-                status_word = "elevated" if test['flag'] == 'H' else "decreased" if test['flag'] == 'L' else "within normal limits"
-                summary_parts.append(f"<li><strong>{test['test']}:</strong> {test['result']} ({status_word}, reference: {test['range']})")
-                
-                if 'wbc' in test['test'].lower():
-                    if test['flag'] == 'H':
-                        summary_parts.append(" - Elevated white blood cells may indicate infection, inflammation, or stress response.")
-                    elif test['flag'] == 'N':
-                        summary_parts.append(" - Normal white blood cell count suggests no active infection or immune compromise.")
-                elif 'hemoglobin' in test['test'].lower():
-                    if test['flag'] == 'L':
-                        summary_parts.append(" - Low hemoglobin indicates anemia, which may cause fatigue and reduced oxygen delivery.")
-                    elif test['flag'] == 'N':
-                        summary_parts.append(" - Normal hemoglobin suggests adequate red blood cell production and oxygen-carrying capacity.")
-                elif 'platelet' in test['test'].lower():
-                    if test['flag'] == 'N':
-                        summary_parts.append(" - Normal platelet count indicates adequate clotting function.")
-                
-                summary_parts.append("</li>")
-            summary_parts.append("</ul>")
-        
-        # 4. Kidney Function
-        kidney_tests = [t for t in test_results if any(x in t['test'].lower() for x in ['creatinine', 'bun', 'egfr'])]
-        if kidney_tests:
-            summary_parts.append("<p><strong>🔹 Kidney Function Tests:</strong></p><ul>")
-            for test in kidney_tests:
-                status_word = "elevated" if test['flag'] == 'H' else "decreased" if test['flag'] == 'L' else "within normal limits"
-                summary_parts.append(f"<li><strong>{test['test']}:</strong> {test['result']} ({status_word}, reference: {test['range']})")
-                
-                if 'creatinine' in test['test'].lower() and test['flag'] == 'N':
-                    summary_parts.append(" - Normal creatinine suggests preserved kidney function.")
-                elif 'egfr' in test['test'].lower() and test['flag'] == 'N':
-                    summary_parts.append(" - Normal eGFR indicates adequate glomerular filtration and kidney health.")
-                
-                summary_parts.append("</li>")
-            summary_parts.append("</ul>")
-        
-        # 5. Liver Function
-        liver_tests = [t for t in test_results if any(x in t['test'].lower() for x in ['alt', 'ast', 'bilirubin', 'alp'])]
-        if liver_tests:
-            summary_parts.append("<p><strong>🔹 Liver Function Tests:</strong></p><ul>")
-            for test in liver_tests:
-                status_word = "elevated" if test['flag'] == 'H' else "decreased" if test['flag'] == 'L' else "within normal limits"
-                summary_parts.append(f"<li><strong>{test['test']}:</strong> {test['result']} ({status_word}, reference: {test['range']})")
-                
-                if test['flag'] == 'N':
-                    summary_parts.append(" - Normal levels indicate healthy hepatic function.")
-                
-                summary_parts.append("</li>")
-            summary_parts.append("</ul>")
-        
-        # Clinical Correlation
-        summary_parts.append("<h4 style='color:#e65100; margin-top:20px;'>Clinical Correlation:</h4>")
-        summary_parts.append(f"<p>{interpretation}</p>")
-        
-        # Recommendations based on findings
-        summary_parts.append("<h4 style='color:#e65100; margin-top:20px;'>Clinical Significance:</h4>")
-        summary_parts.append("<p>")
-        
-        if any('glucose' in t['test'].lower() for t in high_results):
-            summary_parts.append("The elevated glucose markers indicate impaired glucose homeostasis, requiring endocrinology evaluation, lifestyle modifications, and possible pharmacotherapy to prevent diabetic complications. ")
-        
-        if any(x in t['test'].lower() for t in high_results for x in ['cholesterol', 'ldl']) or any('hdl' in t['test'].lower() for t in low_results):
-            summary_parts.append("The dyslipidemia pattern significantly increases cardiovascular risk and may warrant statin therapy, dietary intervention, and regular cardiovascular monitoring. ")
-        
-        if all(t['flag'] == 'N' for t in kidney_tests):
-            summary_parts.append("Preserved kidney function is reassuring and suggests no acute renal compromise. ")
-        
-        summary_parts.append("</p>")
-        
-        return "".join(summary_parts)
-
-    def generate_detailed_radiology_summary(self, findings, impression, recommendations):
-        """Generate a comprehensive, detailed radiology summary"""
-        
-        summary_parts = []
-        
-        # Overall Assessment
-        summary_parts.append("<h4 style='color:#0d47a1; margin-top:0;'>Overall Imaging Assessment:</h4>")
-        
-        impression_lower = impression.lower()
-        if any(word in impression_lower for word in ['normal', 'no acute', 'unremarkable', 'clear']):
-            summary_parts.append("<p>The radiological evaluation demonstrates <strong>no acute abnormalities</strong> on the imaging study performed. All visualized structures appear within normal anatomical limits with no evidence of acute pathology.</p>")
-        elif any(word in impression_lower for word in ['mild', 'minimal', 'slight']):
-            summary_parts.append("<p>The imaging study reveals <strong>mild changes</strong> that may have clinical significance depending on the patient's symptoms and medical history. These findings warrant correlation with clinical presentation.</p>")
-        elif any(word in impression_lower for word in ['moderate', 'significant']):
-            summary_parts.append("<p>The radiological examination shows <strong>moderate findings</strong> that require clinical attention and possible further diagnostic workup or intervention.</p>")
-        else:
-            summary_parts.append("<p>Imaging evaluation completed with detailed assessment of visualized structures. Findings are described below.</p>")
-        
-        # Detailed Findings Breakdown
-        summary_parts.append("<h4 style='color:#0d47a1; margin-top:20px;'>Detailed Imaging Findings:</h4>")
-        summary_parts.append(f"<p>{findings.get('description', 'No significant abnormalities detected on imaging.')}</p>")
-        
-        # Anatomical Structures Assessed
-        summary_parts.append("<h4 style='color:#0d47a1; margin-top:20px;'>Anatomical Structures Evaluated:</h4>")
-        summary_parts.append("<ul>")
-        summary_parts.append("<li><strong>Lung Fields:</strong> Assessed for consolidation, infiltrates, masses, nodules, and pleural abnormalities</li>")
-        summary_parts.append("<li><strong>Cardiac Silhouette:</strong> Evaluated for size, contour, and any abnormal enlargement</li>")
-        summary_parts.append("<li><strong>Mediastinum:</strong> Examined for widening, masses, or lymphadenopathy</li>")
-        summary_parts.append("<li><strong>Pleural Spaces:</strong> Checked for effusions, thickening, or pneumothorax</li>")
-        summary_parts.append("<li><strong>Bony Structures:</strong> Reviewed for fractures, lesions, or degenerative changes</li>")
-        summary_parts.append("<li><strong>Soft Tissues:</strong> Assessed for any abnormal masses or swelling</li>")
-        summary_parts.append("</ul>")
-        
-        # Radiological Impression
-        summary_parts.append("<h4 style='color:#0d47a1; margin-top:20px;'>Radiological Impression:</h4>")
-        summary_parts.append(f"<p style='background:#fff3e0; padding:15px; border-radius:6px; border-left:4px solid #ff9800;'><strong>{impression}</strong></p>")
-        
-        # Clinical Significance
-        summary_parts.append("<h4 style='color:#0d47a1; margin-top:20px;'>Clinical Significance & Recommendations:</h4>")
-        summary_parts.append("<ul>")
-        for rec in recommendations:
-            summary_parts.append(f"<li>{rec}</li>")
-        summary_parts.append("</ul>")
-        
-        # Technical Quality
-        summary_parts.append("<h4 style='color:#0d47a1; margin-top:20px;'>Technical Quality:</h4>")
-        summary_parts.append("<p>The imaging study was performed using standard radiographic protocol with adequate penetration and positioning. Image quality is sufficient for diagnostic interpretation. No technical limitations significantly impair the assessment.</p>")
-        
-        # Comparison Statement
-        summary_parts.append("<h4 style='color:#0d47a1; margin-top:20px;'>Comparison:</h4>")
-        summary_parts.append("<p>No prior imaging studies available for comparison. If symptoms persist or worsen, follow-up imaging may be valuable to assess for interval changes.</p>")
-        
-        return "".join(summary_parts)
-
-    def _determine_imaging_modality(self, query):
-        """Determine the appropriate imaging modality based on clinical query"""
-        query_lower = query.lower()
-        
-        # Brain/Head related
-        if any(word in query_lower for word in ['head', 'brain', 'headache', 'stroke', 'neuro', 'seizure', 'dizziness']):
-            return "mri", "MRI Brain"
-        
-        # Spine related
-        if any(word in query_lower for word in ['spine', 'back pain', 'neck pain', 'spinal', 'vertebra']):
-            return "mri", "MRI Spine"
-        
-        # Abdomen/Pelvis
-        if any(word in query_lower for word in ['abdomen', 'abdominal', 'pelvis', 'pelvic', 'kidney', 'liver', 'pancreas']):
-            return "ct", "CT Abdomen and Pelvis"
-        
-        # Chest/Respiratory (default to X-ray for chest complaints)
-        if any(word in query_lower for word in ['chest', 'cough', 'breath', 'lung', 'respiratory', 'pneumonia']):
-            return "xray", "Chest X-Ray (PA and Lateral Views)"
-        
-        # Default to chest X-ray for general symptoms
-        return "xray", "Chest X-Ray (PA and Lateral Views)"
-
-    def _generate_medical_image(self, modality, query, age, gender):
-        """Generate appropriate medical image based on modality"""
-        if modality == "xray":
-            return self._generate_xray_image()
-        elif modality == "ct":
-            return self._generate_ct_image()
-        elif modality == "mri":
-            return self._generate_mri_image(query)
-        else:
-            return self._generate_xray_image()
-
-    def _generate_xray_image(self):
-        """Generate a realistic X-ray-like medical image placeholder"""
-        from PIL import ImageDraw
-        import numpy as np
-        
-        # Create a grayscale image that looks more like an X-ray
-        width, height = 500, 500
-        
-        # Create gradient background (darker at edges, lighter in center)
-        img_array = np.zeros((height, width), dtype=np.uint8)
-        for i in range(height):
-            for j in range(width):
-                # Create radial gradient
-                distance = np.sqrt((i - height/2)**2 + (j - width/2)**2)
-                max_distance = np.sqrt((height/2)**2 + (width/2)**2)
-                value = int(180 - (distance / max_distance) * 80)
-                img_array[i, j] = value
-        
-        img = Image.fromarray(img_array, mode='L')
-        draw = ImageDraw.Draw(img)
-        
-        # Add some anatomical-looking shapes (simplified chest anatomy)
-        # Left lung area
-        draw.ellipse([80, 120, 220, 360], fill=200, outline=150, width=2)
-        # Right lung area
-        draw.ellipse([280, 120, 420, 360], fill=200, outline=150, width=2)
-        # Heart shadow
-        draw.ellipse([190, 260, 310, 400], fill=130, outline=100, width=2)
-        # Spine representation
-        draw.rectangle([235, 50, 265, 450], fill=120)
-        # Clavicles
-        draw.arc([100, 80, 200, 140], start=180, end=0, fill=140, width=3)
-        draw.arc([300, 80, 400, 140], start=180, end=0, fill=140, width=3)
-        
-        # Add text overlay
-        try:
-            draw.text((20, 20), "CHEST X-RAY - PA VIEW", fill=240)
-            draw.text((20, height-30), "Simulated Radiograph for Demonstration", fill=240)
-            draw.text((width-150, height-30), "R", fill=240)  # Right marker
-        except:
-            pass  # In case font issues
-        
-        # Convert to base64
-        buf = BytesIO()
-        img.save(buf, format="PNG")
-        return f"data:image/png;base64,{base64.b64encode(buf.getvalue()).decode()}"
-
-    def _generate_ct_image(self):
-        """Generate a CT scan-like image"""
-        from PIL import ImageDraw
-        import numpy as np
-        
-        width, height = 500, 500
-        
-        # Create base image with CT-like appearance
-        img_array = np.ones((height, width), dtype=np.uint8) * 40
-        
-        # Add circular field of view
-        for i in range(height):
-            for j in range(width):
-                distance = np.sqrt((i - height/2)**2 + (j - width/2)**2)
-                if distance < 220:
-                    img_array[i, j] = int(100 + 50 * np.random.random())
-        
-        img = Image.fromarray(img_array, mode='L')
-        draw = ImageDraw.Draw(img)
-        
-        # Add anatomical structures
-        draw.ellipse([150, 150, 350, 350], fill=120, outline=100, width=2)
-        draw.ellipse([200, 200, 300, 300], fill=80, outline=70, width=2)
-        
-        try:
-            draw.text((20, 20), "CT SCAN - AXIAL VIEW", fill=240)
-            draw.text((20, height-30), "Simulated CT for Demonstration", fill=240)
-        except:
-            pass
-        
-        buf = BytesIO()
-        img.save(buf, format="PNG")
-        return f"data:image/png;base64,{base64.b64encode(buf.getvalue()).decode()}"
-
-    def _generate_mri_image(self, query):
-        """Generate an MRI-like image"""
-        from PIL import ImageDraw
-        import numpy as np
-        
-        width, height = 500, 500
-        
-        # Create base image with MRI-like appearance
-        img_array = np.ones((height, width), dtype=np.uint8) * 30
-        
-        # Add brain-like structures if it's a brain MRI
-        if any(word in query.lower() for word in ['head', 'brain', 'neuro']):
-            for i in range(height):
-                for j in range(width):
-                    distance = np.sqrt((i - height/2)**2 + (j - width/2)**2)
-                    if distance < 200:
-                        img_array[i, j] = int(150 + 40 * np.random.random())
-        else:
-            # Spine-like structures
-            for i in range(height):
-                for j in range(width):
-                    if 200 < j < 300:
-                        img_array[i, j] = int(120 + 30 * np.random.random())
-        
-        img = Image.fromarray(img_array, mode='L')
-        draw = ImageDraw.Draw(img)
-        
-        try:
-            if any(word in query.lower() for word in ['head', 'brain', 'neuro']):
-                draw.text((20, 20), "MRI BRAIN - AXIAL T2", fill=240)
-            else:
-                draw.text((20, 20), "MRI SPINE - SAGITTAL T2", fill=240)
-            draw.text((20, height-30), "Simulated MRI for Demonstration", fill=240)
-        except:
-            pass
-        
-        buf = BytesIO()
-        img.save(buf, format="PNG")
-        return f"data:image/png;base64,{base64.b64encode(buf.getvalue()).decode()}"
+        self.kb = kb  # Store knowledge base reference
 
     def process(self, query, patient, report_type):
-        """Process patient data and generate reports"""
-        age = patient.get('age', 'unknown')
-        gender = patient.get('gender', 'unknown')
-        history = patient.get('medical_history', 'none reported')
+        """Process patient data and generate reports from CSV knowledge base"""
+        patient_name = patient.get('patient_name', '')
         
         data = {
             "interpretation_guidance": "",
@@ -1061,140 +680,305 @@ class MedicalLLMInterface:
         }
 
         if report_type == "lab":
-            test_results = self._generate_lab_results(query, age, gender)
-            data["test_results"] = test_results
+            # Get test results from CSV
+            test_results = self.kb.get_blood_tests(patient_name)
             
-            high_tests = [t['test'] for t in test_results if t['flag'] == 'H']
-            low_tests = [t['test'] for t in test_results if t['flag'] == 'L']
+            if not test_results:
+                st.warning(f"No lab test data found for {patient_name}")
+                return data
             
-            abnormal_summary = ""
-            if high_tests:
-                abnormal_summary += f"Elevated: {', '.join(high_tests)}. "
-            if low_tests:
-                abnormal_summary += f"Low: {', '.join(low_tests)}. "
+            # Filter tests based on clinical query/symptoms
+            filtered_tests = self._filter_relevant_tests(test_results, query, patient)
             
-            lab_prompt = f"Patient is a {age} year old {gender} with symptoms: {query}. {abnormal_summary}Clinical interpretation:"
-            interpretation = self._generate_text(lab_prompt, max_tokens=150)
+            if not filtered_tests:
+                # If no specific filter matches, use all tests
+                filtered_tests = test_results
+                
+            data["test_results"] = filtered_tests
+            
+            # Use interpretation from CSV
+            interpretation = filtered_tests[0].get('interpretation', 'Lab analysis completed') if filtered_tests else ''
             data["interpretation_guidance"] = interpretation
             
-            recommendations = [
-                "Follow-up testing recommended in 3 months to monitor trends",
-                "Clinical correlation with patient symptoms advised"
-            ]
+            # Generate recommendations based on findings
+            recommendations = []
+            high_tests = [t for t in filtered_tests if t.get('flag') == 'H']
             
-            if any('glucose' in t['test'].lower() for t in test_results if t['flag'] == 'H'):
-                recommendations.append("Consider endocrinology referral for diabetes management")
-                recommendations.append("Lifestyle modifications including diet and exercise counseling")
+            if any('troponin' in t['test_name'].lower() for t in high_tests):
+                recommendations.extend([
+                    "Immediate cardiology consultation required",
+                    "Continuous cardiac monitoring recommended",
+                    "Consider emergency coronary intervention"
+                ])
+            elif any('glucose' in t['test_name'].lower() or 'hba1c' in t['test_name'].lower() for t in high_tests):
+                recommendations.extend([
+                    "Endocrinology referral for diabetes management",
+                    "Lifestyle modifications including diet and exercise counseling"
+                ])
             
-            if any(x in t['test'].lower() for t in test_results if t['flag'] != 'N' for x in ['cholesterol', 'ldl', 'hdl']):
+            if any('cholesterol' in t['test_name'].lower() or 'ldl' in t['test_name'].lower() for t in high_tests):
                 recommendations.append("Consider lipid-lowering therapy if clinically indicated")
             
-            data["recommendations"] = recommendations
+            if not recommendations:
+                recommendations = [
+                    "Follow-up testing recommended in 3 months to monitor trends",
+                    "Clinical correlation with patient symptoms advised"
+                ]
             
-            # Generate detailed lab summary
-            data["detailed_summary"] = self.generate_detailed_lab_summary(test_results, interpretation, patient)
+            data["recommendations"] = recommendations
             
         else:  # radiology
-            # Determine appropriate imaging modality
-            modality, test_name = self._determine_imaging_modality(query)
+            # Get scan results from CSV
+            scans = self.kb.get_scans(patient_name)
             
-            rad_prompt = f"{test_name} of {age} year old {gender} with {query}. Radiological findings:"
-            findings_text = self._generate_text(rad_prompt, max_tokens=120)
+            if not scans:
+                st.warning(f"No imaging data found for {patient_name}")
+                return data
             
-            impression_prompt = f"Imaging impression for {age} year old {gender} with {query}:"
-            impression_text = self._generate_text(impression_prompt, max_tokens=80)
+            data["scans"] = scans
             
-            # Generate detailed findings based on modality
-            if modality == "xray":
-                if len(findings_text) < 20:
-                    findings_text = "Chest X-ray evaluation shows clear lung fields bilaterally. No focal consolidation, pleural effusion, or pneumothorax identified. Cardiac silhouette is within normal limits. Bony structures are intact without acute fractures. No acute cardiopulmonary abnormality detected."
-            elif modality == "ct":
-                if len(findings_text) < 20:
-                    findings_text = "CT examination demonstrates normal lung parenchyma without focal consolidation or mass lesion. Mediastinal structures are unremarkable. No pleural or pericardial effusion. Osseous structures show no acute abnormality. Airways are patent."
-            elif modality == "mri":
-                if len(findings_text) < 20:
-                    if any(word in query.lower() for word in ['head', 'brain', 'neuro', 'headache']):
-                        findings_text = "MRI brain demonstrates normal gray-white matter differentiation. Ventricular system is normal in size and configuration. No abnormal signal intensity or mass lesion. No evidence of acute infarction or hemorrhage. Midline structures are normal."
-                    else:
-                        findings_text = "MRI examination shows normal vertebral body alignment and height. Intervertebral disc spaces are preserved. Spinal cord demonstrates normal signal intensity without evidence of compression. Neural foramina are patent. Paraspinal soft tissues are unremarkable."
+            # Generate recommendations based on scan findings
+            recommendations = []
+            interpretations_text = ' '.join([s.get('interpretation', '') for s in scans]).lower()
             
-            if len(impression_text) < 20:
-                impression_text = "No acute abnormality detected on imaging."
-            
-            data["specific_tests"] = [test_name]
-            data["imaging_findings"] = {
-                "description": findings_text,
-                "impression": impression_text
-            }
-            
-            # Generate appropriate medical image based on symptoms and modality
-            image_data = self._generate_medical_image(modality, query, age, gender)
-            data["images"] = [{"data": image_data, "label": f"Simulated {test_name}"}]
-            
-            # Generate recommendations based on modality
-            recommendations = [
-                "Clinical correlation with patient presentation recommended",
-            ]
-            
-            if modality == "xray":
+            if 'stemi' in interpretations_text or 'infarction' in interpretations_text:
                 recommendations.extend([
-                    "Follow-up chest X-ray may be considered in 6-8 weeks if symptoms persist",
-                    "CT chest may be obtained for further characterization if clinically indicated"
+                    "Immediate cardiac catheterization and possible PCI",
+                    "Dual antiplatelet therapy and appropriate cardiac medications",
+                    "Cardiac rehabilitation program enrollment"
                 ])
-            elif modality == "ct":
+            elif 'pneumonia' in interpretations_text:
                 recommendations.extend([
-                    "PET-CT may be considered if malignancy is suspected",
-                    "Follow-up CT imaging in 3-6 months to assess stability or interval changes"
+                    "Initiate appropriate antibiotic therapy",
+                    "Follow-up chest X-ray in 4-6 weeks to confirm resolution"
                 ])
-            elif modality == "mri":
+            else:
                 recommendations.extend([
-                    "MRI with contrast enhancement may provide additional information if needed",
-                    "Clinical neurology consultation recommended for correlation"
+                    "Clinical correlation with patient presentation recommended",
+                    "Follow-up imaging if symptoms persist or worsen"
                 ])
             
             data["recommendations"] = recommendations
-            
-            # Generate detailed radiology summary
-            data["detailed_summary"] = self.generate_detailed_radiology_summary(
-                data["imaging_findings"],
-                impression_text,
-                data["recommendations"]
-            )
 
         return data
+    
+    def _filter_relevant_tests(self, test_results, query, patient):
+        """Filter lab tests based on symptoms and clinical presentation"""
+        query_lower = query.lower() if query else ''
+        medical_history = patient.get('medical_history', '').lower()
+        combined_context = query_lower + ' ' + medical_history
+        
+        # Define test categories and their relevant keywords
+        test_categories = {
+            'cardiac': {
+                'keywords': ['chest pain', 'heart', 'cardiac', 'angina', 'myocardial', 'infarction', 
+                           'stemi', 'shortness of breath', 'diaphoresis', 'jaw pain', 'arm pain'],
+                'tests': ['troponin', 'ck-mb', 'ck', 'ldl', 'hdl', 'cholesterol', 'triglyceride', 
+                         'wbc', 'hemoglobin', 'platelet', 'creatinine', 'bun', 'k+', 'na+']
+            },
+            'diabetes': {
+                'keywords': ['thirst', 'urination', 'glucose', 'diabetes', 'fatigue', 'weight loss',
+                           'polyuria', 'polydipsia', 'hyperglycemia'],
+                'tests': ['glucose', 'hba1c', 'sugar', 'cholesterol', 'ldl', 'hdl', 'triglyceride',
+                         'wbc', 'hemoglobin', 'platelet', 'creatinine', 'bun', 'egfr']
+            },
+            'infection': {
+                'keywords': ['fever', 'cough', 'infection', 'pneumonia', 'sputum', 'respiratory',
+                           'breath', 'copd', 'inflammatory'],
+                'tests': ['wbc', 'crp', 'hemoglobin', 'platelet', 'creatinine', 'bun']
+            },
+            'general': {
+                'keywords': [],  # Always include these basic tests
+                'tests': ['wbc', 'hemoglobin', 'platelet']
+            }
+        }
+        
+        # Determine which category matches
+        relevant_test_names = set()
+        matched_category = False
+        
+        for category, data in test_categories.items():
+            # Check if any keyword matches
+            if category == 'general' or any(keyword in combined_context for keyword in data['keywords']):
+                relevant_test_names.update([test.lower() for test in data['tests']])
+                if category != 'general':
+                    matched_category = True
+        
+        # If no specific category matched, return all tests
+        if not matched_category:
+            return test_results
+        
+        # Filter tests based on relevant test names
+        filtered = []
+        for test in test_results:
+            test_name_lower = test.get('test_name', '').lower()
+            # Check if test name contains any of the relevant test keywords
+            if any(relevant in test_name_lower for relevant in relevant_test_names):
+                filtered.append(test)
+        
+        return filtered if filtered else test_results
 
     def synthesize(self, lab_data, rad_data, patient):
         """Generate final diagnostic synthesis combining all data"""
         query = patient.get('clinical_query', '')
         age = patient.get('age', 'unknown')
         gender = patient.get('gender', 'unknown')
+        name = patient.get('patient_name', '')
+        medical_history = patient.get('medical_history', '')
         
         lab_interp = lab_data.get('interpretation_guidance', '')
-        rad_impression = rad_data.get('imaging_findings', {}).get('impression', '')
         
-        diag_prompt = f"Patient: {age} year old {gender}. Presenting symptoms: {query}. Lab findings: {lab_interp[:100]} Imaging: {rad_impression[:80]} Final clinical diagnosis:"
-        diagnosis_text = self._generate_text(diag_prompt, max_tokens=200)
+        # Get imaging interpretation from scans
+        scans = rad_data.get('scans', [])
         
-        if len(diagnosis_text) < 30:
-            diagnosis_text = f"Based on the clinical presentation and diagnostic workup, the patient shows evidence of metabolic dysfunction requiring medical management and lifestyle modification. Close monitoring and follow-up are recommended."
+        # Generate detailed history description
+        history_description = f"{name}, a {age}-year-old {gender} with {medical_history.lower()}, presented with {query.lower()}"
+        
+        # Extract ECG findings and conclusion
+        ecg_findings = []
+        ecg_conclusion = "Normal sinus rhythm"
+        imaging_details = []
+        
+        for scan in scans:
+            scan_type = scan.get('scan_type', '')
+            findings = scan.get('findings', '')
+            interpretation = scan.get('interpretation', '')
+            
+            if 'ecg' in scan_type.lower():
+                # Parse ECG findings
+                if findings:
+                    ecg_findings = [f.strip() for f in findings.split(',')]
+                ecg_conclusion = interpretation
+            else:
+                imaging_details.append(f"{scan_type}: {interpretation}")
+        
+        if not ecg_findings:
+            ecg_findings = ["Normal sinus rhythm", "No ST segment changes", "No arrhythmias noted"]
+        
+        imaging_interpretation = '; '.join(imaging_details) if imaging_details else "Imaging studies completed"
+        
+        # Generate lab key findings
+        test_results = lab_data.get('test_results', [])
+        high_tests = [t for t in test_results if t.get('flag') == 'H']
+        low_tests = [t for t in test_results if t.get('flag') == 'L']
+        
+        lab_key_findings = []
+        if high_tests:
+            lab_key_findings.append(f"Elevated: {', '.join([t['test_name'] for t in high_tests[:5]])}")
+        if low_tests:
+            lab_key_findings.append(f"Decreased: {', '.join([t['test_name'] for t in low_tests[:5]])}")
+        if not lab_key_findings:
+            lab_key_findings.append("All parameters within normal limits")
+        
+        lab_key_findings_text = '. '.join(lab_key_findings)
+        
+        # Generate imaging summary
+        imaging_summary = []
+        for scan in scans:
+            scan_type = scan.get('scan_type', '')
+            interpretation = scan.get('interpretation', '')
+            if 'ecg' not in scan_type.lower():
+                imaging_summary.append(f"• {scan_type}: {interpretation}")
+        
+        imaging_summary_text = '\n'.join(imaging_summary) if imaging_summary else "No significant abnormalities detected"
+        
+        # Generate diagnosis based on findings
+        diagnosis_text = ""
+        
+        # Check for STEMI
+        if any('stemi' in s.get('interpretation', '').lower() or 'infarction' in s.get('interpretation', '').lower() for s in scans):
+            diagnosis_text = f"ACUTE ST-ELEVATION MYOCARDIAL INFARCTION (STEMI) — Anterior Wall\n\n"
+            diagnosis_text += f"A {age}-year-old {gender} patient presenting with acute chest pain and ECG changes consistent with acute anterior wall myocardial infarction. "
+            diagnosis_text += f"Elevated cardiac biomarkers confirm active myocardial necrosis. Angiography demonstrates complete LAD occlusion successfully treated with primary PCI and stent placement."
+            
+            recommendations = [
+                "IMMEDIATE: Dual antiplatelet therapy (Aspirin 325mg + Ticagrelor 180mg loading dose)",
+                "Beta-blocker therapy (Metoprolol or Carvedilol) unless contraindicated",
+                "ACE inhibitor or ARB for ventricular remodeling prevention",
+                "High-intensity statin therapy (Atorvastatin 80mg daily)",
+                "Continuous cardiac monitoring for 24-48 hours",
+                "Serial troponin monitoring until peak and trend downward",
+                "Echocardiography to assess ventricular function and complications",
+                "Cardiac rehabilitation program enrollment prior to discharge",
+                "Aggressive risk factor modification: smoking cessation, blood pressure control, lipid management",
+                "Close cardiology follow-up within 1-2 weeks post-discharge"
+            ]
+        
+        # Check for diabetes
+        elif 'glucose' in lab_interp.lower() or 'diabetes' in lab_interp.lower():
+            diagnosis_text = f"TYPE 2 DIABETES MELLITUS — Inadequate Glycemic Control\n\n"
+            diagnosis_text += f"A {age}-year-old {gender} patient with significantly elevated fasting glucose and HbA1c levels consistent with uncontrolled Type 2 Diabetes Mellitus. "
+            diagnosis_text += f"Associated dyslipidemia present, indicating metabolic syndrome. No evidence of acute diabetic complications at this time."
+            
+            recommendations = [
+                "Endocrinology referral for comprehensive diabetes management",
+                "Initiate or adjust oral hypoglycemic therapy (Metformin as first-line unless contraindicated)",
+                "Consider additional agents: SGLT2 inhibitor or GLP-1 agonist based on cardiovascular risk profile",
+                "Diabetes education program enrollment",
+                "Home blood glucose monitoring: fasting and 2-hour postprandial",
+                "Dietary consultation with registered dietitian (carbohydrate counting, portion control)",
+                "Regular exercise program: 150 minutes moderate-intensity aerobic activity per week",
+                "HbA1c monitoring every 3 months until goal achieved, then every 6 months",
+                "Annual comprehensive diabetic foot examination",
+                "Annual diabetic retinopathy screening",
+                "Annual urine microalbumin screening for diabetic nephropathy",
+                "Statin therapy for cardiovascular risk reduction"
+            ]
+        
+        # Check for pneumonia
+        elif any('pneumonia' in s.get('interpretation', '').lower() for s in scans):
+            diagnosis_text = f"COMMUNITY-ACQUIRED PNEUMONIA — Right Lower Lobe\n\n"
+            diagnosis_text += f"A {age}-year-old {gender} patient presenting with respiratory symptoms and radiographic evidence of right lower lobe consolidation. "
+            diagnosis_text += f"Elevated WBC count and inflammatory markers consistent with bacterial pneumonia. Clinical presentation supports community-acquired pneumonia requiring antibiotic therapy."
+            
+            recommendations = [
+                "Empiric antibiotic therapy: Ceftriaxone 1g IV daily + Azithromycin 500mg PO daily",
+                "Alternative regimen: Levofloxacin 750mg PO/IV daily (respiratory fluoroquinolone)",
+                "Supportive care: adequate hydration (2-3L fluids daily), rest",
+                "Supplemental oxygen if SpO2 <92% to maintain saturation >92%",
+                "Antipyretics for fever management (Acetaminophen or Ibuprofen)",
+                "Monitor for complications: pleural effusion, empyema, sepsis",
+                "Follow-up chest X-ray in 4-6 weeks to confirm resolution",
+                "Pulmonary function testing if symptoms persist after treatment",
+                "Pneumococcal and influenza vaccination if not up to date",
+                "Smoking cessation counseling if applicable",
+                "Close follow-up in 2-3 days to assess treatment response"
+            ]
+        
+        else:
+            diagnosis_text = f"Clinical Assessment — Further Evaluation Required\n\n"
+            diagnosis_text += f"Based on clinical presentation and diagnostic workup, this {age}-year-old {gender} patient demonstrates findings requiring medical management and close monitoring. "
+            diagnosis_text += f"Comprehensive assessment including laboratory and imaging studies has been completed."
+            
+            recommendations = [
+                "Regular follow-up appointments as scheduled",
+                "Continue monitoring of relevant clinical parameters",
+                "Lifestyle modifications including healthy diet and regular exercise",
+                "Medication adherence counseling if applicable",
+                "Patient education regarding warning signs and when to seek medical attention",
+                "Repeat laboratory testing in 3 months to assess trends",
+                "Consider specialty referral if symptoms persist or worsen"
+            ]
         
         return {
-            "clinical_summary": {
-                "history_of_present_illness": query
-            },
-            "impression": diagnosis_text,
+            "history_description": history_description,
+            "ecg_findings": ecg_findings,
+            "ecg_conclusion": ecg_conclusion,
             "lab_interpretation": lab_interp,
-            "imaging_interpretation": rad_impression
+            "lab_key_findings": lab_key_findings_text,
+            "imaging_interpretation": imaging_interpretation,
+            "imaging_summary": imaging_summary_text,
+            "impression": diagnosis_text,
+            "recommendations": recommendations
         }
-
 
 
 # =========================================================
 #                REPORT GENERATOR
 # =========================================================
 class ReportGenerator:
-    def __init__(self):
-        self.llm = MedicalLLMInterface()
+    def __init__(self, kb):
+        self.llm = MedicalLLMInterface(kb)
         self.env = Environment(loader=BaseLoader())
 
     def generate(self, query, patient, rtype):
@@ -1249,7 +1033,7 @@ class ReportGenerator:
 def main():
 
     kb = MedicalKnowledgeBase()
-    rg = ReportGenerator()
+    rg = ReportGenerator(kb)
 
     name = st.text_input("Patient Name (Type and press Enter)")
 
@@ -1307,7 +1091,7 @@ def main():
     <li>Radiology findings (X-ray/CT/MRI text-based interpretation)</li>
     </ul>
 
-    Powered by Microsoft's BioGPT, these reports adapt to the patient's age, symptoms, and medical history.<br><br>
+    Reports are generated from the knowledge base CSV files.<br><br>
 
     <b>
     Click below to automatically generate lab and imaging reports based on clinical presentation.
@@ -1316,7 +1100,6 @@ def main():
 
     </div>
     """, unsafe_allow_html=True)
-
 
     # Information boxes for Lab and Radiology Reports
     col1, col2 = st.columns(2)
@@ -1397,6 +1180,7 @@ def main():
         </div>
         """, unsafe_allow_html=True)
 
+
     st.markdown("""
     <style>
     div.stButton > button[kind="primary"] {
@@ -1438,13 +1222,14 @@ def main():
                 "age": age,
                 "gender": gender,
                 "medical_history": history,
-                "clinical_query": query
+                "clinical_query": query,
+                "risk_factors": kb.search_patient_by_name(name).get('risk_factors', '') if kb.search_patient_by_name(name) else ''
             }
 
-            with st.spinner("🔬 Generating lab report using BioGPT..."):
+            with st.spinner("🔬 Generating lab report from knowledge base..."):
                 lab_html, lab = rg.generate(query, patient, "lab")
             
-            with st.spinner("🩻 Generating radiology report using BioGPT..."):
+            with st.spinner("🩻 Generating radiology report from knowledge base..."):
                 rad_html, rad = rg.generate(query, patient, "radiology")
 
             st.session_state.lab_html = lab_html
@@ -1468,27 +1253,6 @@ def main():
         
         st.components.v1.html(st.session_state.lab_html, height=500, scrolling=True)
         
-        # DYNAMICALLY GENERATED LAB SUMMARY
-        st.markdown(f"""
-        <div class="uniform-spacing" style="
-        background:#fff3e0;
-        padding:25px;
-        border-radius:8px;
-        border-left:5px solid #ff9800;
-        font-size:15px;
-        line-height:1.7;">
-        
-        <h3 style="color:#e65100; margin-top:0;">🔬 Lab Report Summary: AI-Generated Analysis of Key Biomarkers and Test Results</h3>
-        
-        <p>This section presents an automatically generated interpretation of the patient's laboratory results using Microsoft's BioGPT, analyzing blood parameters, organ function indicators, metabolic markers, and condition-specific tests.</p>
-        
-        <div style="background:white; padding:20px; border-radius:6px; margin-top:15px;">
-        {st.session_state.lab.get('detailed_summary', 'Generating detailed analysis...')}
-        </div>
-        
-        </div>
-        """, unsafe_allow_html=True)
-        
         # PDF Download for Lab Report
         if PDF_AVAILABLE:
             pdf_data = rg.html_to_pdf(st.session_state.lab_html)
@@ -1511,27 +1275,6 @@ def main():
         """, unsafe_allow_html=True)
         
         st.components.v1.html(st.session_state.rad_html, height=500, scrolling=True)
-        
-        # DYNAMICALLY GENERATED RADIOLOGY SUMMARY
-        st.markdown(f"""
-        <div class="uniform-spacing" style="
-        background:#e3f2fd;
-        padding:25px;
-        border-radius:8px;
-        border-left:5px solid #2196F3;
-        font-size:15px;
-        line-height:1.7;">
-        
-        <h3 style="color:#0d47a1; margin-top:0;">🩻 Radiology Report Summary: AI-Driven Interpretation of Imaging Findings</h3>
-        
-        <p>This section provides an AI-generated summary of radiology imaging observations using Microsoft's BioGPT, interpreting structural abnormalities, inflammation, organ changes, and pattern-based findings.</p>
-        
-        <div style="background:white; padding:20px; border-radius:6px; margin-top:15px;">
-        {st.session_state.rad.get('detailed_summary', 'Generating detailed analysis...')}
-        </div>
-        
-        </div>
-        """, unsafe_allow_html=True)
         
         # PDF Download for Radiology Report
         if PDF_AVAILABLE:
@@ -1580,8 +1323,10 @@ def main():
         </div>
         """, unsafe_allow_html=True)
 
+
+
         if st.button("Generate Diagnostic Report", type="primary", use_container_width=True):
-            with st.spinner("🏥 Generating comprehensive diagnostic report using BioGPT..."):
+            with st.spinner("🏥 Generating comprehensive diagnostic report..."):
                 diag_html, diag_data = rg.diagnosis(st.session_state.lab,
                                          st.session_state.rad,
                                          st.session_state.patient)
@@ -1599,55 +1344,6 @@ def main():
         """, unsafe_allow_html=True)
         
         st.components.v1.html(st.session_state.diag_html, height=700, scrolling=True)
-        
-        # Diagnostic Report Summary
-        diag_data = st.session_state.get('diag_data', {})
-        lab_interp = diag_data.get('lab_interpretation', 'Lab analysis completed')
-        imaging_interp = diag_data.get('imaging_interpretation', 'Imaging analysis completed')
-        final_impression = diag_data.get('impression', 'Clinical synthesis in progress')
-        
-        st.markdown(f"""
-        <div class="uniform-spacing" style="
-        background:#f3e5f5;
-        padding:25px;
-        border-radius:8px;
-        border-left:5px solid #9c27b0;
-        font-size:15px;
-        line-height:1.7;">
-        
-        <h3 style="color:#6a1b9a; margin-top:0;">🏥 Diagnostic Report Summary: Comprehensive AI-Generated Clinical Synthesis</h3>
-        
-        <p>This section provides an AI-generated synthesis of all diagnostic findings, powered by Microsoft's BioGPT, integrating laboratory biomarkers, imaging observations, clinical presentation, and medical history into a cohesive assessment.</p>
-        
-        <div style="background:white; padding:20px; border-radius:6px; margin-top:15px;">
-        
-        <h4 style="color:#6a1b9a;">Overall Clinical Diagnosis:</h4>
-        <p style="background:#fff3e0; padding:15px; border-radius:6px; border-left:4px solid #ff9800;">
-        <strong>{final_impression}</strong>
-        </p>
-        
-        <h4 style="color:#6a1b9a; margin-top:20px;">Laboratory Interpretation:</h4>
-        <p>{lab_interp}</p>
-        
-        <h4 style="color:#6a1b9a; margin-top:20px;">Imaging Interpretation:</h4>
-        <p>{imaging_interp}</p>
-        
-        <h4 style="color:#6a1b9a; margin-top:20px;">Integrated Clinical Synthesis:</h4>
-        <p>The comprehensive evaluation integrates clinical presentation with objective laboratory and imaging data to provide a holistic assessment of the patient's condition. The AI analysis considers:</p>
-        <ul>
-        <li><strong>Presenting Symptoms:</strong> Patient complaints and clinical manifestations</li>
-        <li><strong>Laboratory Biomarkers:</strong> Quantitative assessment of metabolic, hematologic, and organ function parameters</li>
-        <li><strong>Imaging Findings:</strong> Structural and anatomical evaluation through radiological studies</li>
-        <li><strong>Medical History:</strong> Pre-existing conditions and risk factors</li>
-        <li><strong>Age & Gender Factors:</strong> Demographic considerations in disease prevalence and presentation</li>
-        </ul>
-        
-        <p>This multi-modal approach ensures a thorough diagnostic assessment that supports evidence-based clinical decision-making and guides appropriate management strategies. The AI-generated synthesis serves as a clinical decision support tool, providing physicians with a comprehensive view of the patient's condition while maintaining the necessity of clinical judgment and patient-specific considerations.</p>
-        
-        </div>
-        
-        </div>
-        """, unsafe_allow_html=True)
         
         # PDF Download for Diagnostic Report
         if PDF_AVAILABLE:

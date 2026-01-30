@@ -1,0 +1,11 @@
+patient_name,scan_type,findings,interpretation
+John Doe,ECG,"ST-Elevation in leads V1, V2, V3, V4 (Anterior Leads), Reciprocal ST depression in II/III/aVF, Loss of R waves in V3, Hyperacute T waves in V2-V4",Acute Anterior Wall STEMI - likely LAD occlusion
+John Doe,Echocardiography,"Ejection Fraction: 42% (reduced), Regional wall motion abnormalities: Akinesis in LAD territory (anterior wall & apex), No significant valve abnormalities, No pericardial effusion",Reduced ejection fraction with anterior wall motion abnormalities consistent with acute myocardial infarction
+John Doe,Angiography,"LAD: 100% occlusion in proximal segment (TIMI 0 pre-PCI, TIMI 3 post-PCI), LCX: 40% stenosis, RCA: Mild diffuse disease, Intervention: Primary PCI performed with DES placement",Complete LAD occlusion successfully treated with primary PCI and stent placement
+John Doe,Chest X-Ray,No acute cardiopulmonary abnormality. Lungs clear bilaterally.,No acute cardiopulmonary abnormality detected on initial chest X-ray
+Jane Smith,ECG,"Normal sinus rhythm, No ST changes or abnormalities",No cardiac abnormalities detected
+Jane Smith,Echocardiography,"Normal ejection fraction (60%), No wall motion abnormalities",Normal cardiac function
+Jane Smith,Abdominal Ultrasound,"Mild fatty liver, consistent with metabolic syndrome, No gallstones or masses",Mild hepatic steatosis consistent with metabolic syndrome
+Michael Johnson,ECG,"Normal sinus rhythm, Mild tachycardia",Normal ECG findings with physiologic tachycardia
+Michael Johnson,Echocardiography,"Normal ejection fraction (55%), No significant findings",Normal cardiac function
+Michael Johnson,Chest X-Ray,"Consolidation in right lower lobe, suggestive of pneumonia, No pleural effusion or pneumothorax",Consolidation in right lower lobe consistent with community-acquired pneumonia

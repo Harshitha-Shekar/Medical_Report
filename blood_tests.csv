@@ -1,0 +1,35 @@
+patient_name,test_name,result,flag,range,interpretation
+John Doe,Troponin I (0 hours),0.24 ng/mL,H,<0.04 ng/mL,Elevated cardiac biomarkers indicate myocardial injury
+John Doe,Troponin I (3 hours),4.8 ng/mL,H,<0.04 ng/mL,Elevated cardiac biomarkers indicate active myocardial infarction
+John Doe,Troponin I (6 hours),12.6 ng/mL,H,<0.04 ng/mL,Elevated cardiac biomarkers indicate active myocardial infarction
+John Doe,CK-MB (0 hours),12 U/L,N,0-24 U/L,Elevated cardiac biomarkers indicate active myocardial infarction
+John Doe,CK-MB (3 hours),33 U/L,H,0-24 U/L,Elevated cardiac biomarkers indicate active myocardial infarction
+John Doe,CK-MB (6 hours),41 U/L,H,0-24 U/L,Elevated cardiac biomarkers indicate active myocardial infarction
+John Doe,WBC Count,11.2 K/uL,H,4.0-10.0 K/uL,Elevated cardiac biomarkers indicate active myocardial infarction
+John Doe,Hemoglobin,14.1 g/dL,N,12.0-16.0 g/dL,Elevated cardiac biomarkers indicate active myocardial infarction
+John Doe,Platelets,276 K/uL,N,150-400 K/uL,Elevated cardiac biomarkers indicate active myocardial infarction
+John Doe,Creatinine,1.0 mg/dL,N,0.6-1.2 mg/dL,Elevated cardiac biomarkers indicate active myocardial infarction
+John Doe,BUN,17 mg/dL,N,7-20 mg/dL,Elevated cardiac biomarkers indicate active myocardial infarction
+John Doe,LDL Cholesterol,164 mg/dL,H,<100 mg/dL,Elevated cardiac biomarkers indicate cardiovascular risk
+John Doe,HDL Cholesterol,33 mg/dL,L,>40 mg/dL,Elevated cardiac biomarkers indicate cardiovascular risk
+John Doe,Triglycerides,196 mg/dL,H,<150 mg/dL,Elevated cardiac biomarkers indicate cardiovascular risk
+John Doe,K+,4.1 mmol/L,N,3.5-5.0 mmol/L,Elevated cardiac biomarkers indicate active myocardial infarction
+John Doe,Na+,137 mmol/L,N,135-145 mmol/L,Elevated cardiac biomarkers indicate active myocardial infarction
+Jane Smith,Fasting Glucose,165 mg/dL,H,70-99 mg/dL,Elevated glucose and HbA1c consistent with uncontrolled diabetes
+Jane Smith,HbA1c,8.20%,H,4.0-5.6 %,Elevated glucose and HbA1c consistent with uncontrolled diabetes
+Jane Smith,Random Blood Sugar,210 mg/dL,H,70-140 mg/dL,Elevated glucose and HbA1c consistent with uncontrolled diabetes
+Jane Smith,WBC Count,8.5 K/uL,N,4.0-10.0 K/uL,Elevated glucose and HbA1c consistent with uncontrolled diabetes
+Jane Smith,Hemoglobin,13.5 g/dL,N,12.0-16.0 g/dL,Elevated glucose and HbA1c consistent with uncontrolled diabetes
+Jane Smith,Platelets,245 K/uL,N,150-400 K/uL,Elevated glucose and HbA1c consistent with uncontrolled diabetes
+Jane Smith,Creatinine,0.9 mg/dL,N,0.6-1.2 mg/dL,Elevated glucose and HbA1c consistent with uncontrolled diabetes
+Jane Smith,BUN,16 mg/dL,N,7-20 mg/dL,Elevated glucose and HbA1c consistent with uncontrolled diabetes
+Jane Smith,LDL Cholesterol,140 mg/dL,H,<100 mg/dL,Elevated glucose and HbA1c consistent with dyslipidemia
+Jane Smith,HDL Cholesterol,38 mg/dL,L,>40 mg/dL,Elevated glucose and HbA1c consistent with dyslipidemia
+Jane Smith,Triglycerides,185 mg/dL,H,<150 mg/dL,Elevated glucose and HbA1c consistent with dyslipidemia
+Jane Smith,eGFR,95 mL/min,N,>60 mL/min,Elevated glucose and HbA1c consistent with uncontrolled diabetes
+Michael Johnson,WBC Count,15.2 K/uL,H,4.0-10.0 K/uL,Leukocytosis with neutrophilia and elevated CRP suggest bacterial infection
+Michael Johnson,Hemoglobin,13.8 g/dL,N,12.0-16.0 g/dL,Leukocytosis with neutrophilia and elevated CRP suggest bacterial infection
+Michael Johnson,Platelets,320 K/uL,N,150-400 K/uL,Leukocytosis with neutrophilia and elevated CRP suggest bacterial infection
+Michael Johnson,CRP,45 mg/L,H,<5 mg/L,Leukocytosis with neutrophilia and elevated CRP suggest bacterial infection
+Michael Johnson,Creatinine,1.1 mg/dL,N,0.6-1.2 mg/dL,Leukocytosis with neutrophilia suggest bacterial infection
+Michael Johnson,BUN,18 mg/dL,N,7-20 mg/dL,Leukocytosis with neutrophilia suggest bacterial infection
