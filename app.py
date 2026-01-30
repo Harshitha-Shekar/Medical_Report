@@ -332,14 +332,14 @@ class TemplateStrings:
             margin-bottom:25px; 
         }
         .hospital-name { 
-            font-size: 24px; 
+            font-size: 28px; 
             font-weight:bold; 
             color:#022869;
             margin-bottom: 5px;
         }
         .address { 
-            font-size: 12px; 
-            color:#555; 
+            font-size: 14px; 
+            color:#000000; 
             line-height: 1.6;
         }
         .divider {
@@ -347,8 +347,8 @@ class TemplateStrings:
             margin: 15px 0;
         }
         .verified-by {
-            font-size: 11px;
-            color: #666;
+            font-size: 13px;
+            color: #000000;
             margin-top: 10px;
         }
         .section-title { 
@@ -380,7 +380,7 @@ class TemplateStrings:
         }
         .patient-details td {
             padding: 8px;
-            font-size: 13px;
+            font-size: 14px;
         }
         .patient-details td:first-child {
             font-weight: bold;
