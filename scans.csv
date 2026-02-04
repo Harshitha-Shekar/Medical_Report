@@ -9,3 +9,12 @@ Jane Smith,Abdominal Ultrasound,"Mild fatty liver, consistent with metabolic syn
 Michael Johnson,ECG,"Normal sinus rhythm, Mild tachycardia",Normal ECG findings with physiologic tachycardia
 Michael Johnson,Echocardiography,"Normal ejection fraction (55%), No significant findings",Normal cardiac function
 Michael Johnson,Chest X-Ray,"Consolidation in right lower lobe, suggestive of pneumonia, No pleural effusion or pneumothorax",Consolidation in right lower lobe consistent with community-acquired pneumonia
+Sarah Williams,ECG,"Sinus tachycardia (104 bpm), Normal axis, No ST-T wave abnormalities, No chamber enlargement",Sinus tachycardia likely compensatory for severe anemia
+Sarah Williams,Echocardiography,"Hyperdynamic left ventricle with normal ejection fraction (65%), Mild mitral regurgitation (physiologic), No structural abnormalities",Compensatory hyperdynamic circulation secondary to severe anemia
+Sarah Williams,Chest X-Ray,"Normal cardiac silhouette, Clear lung fields bilaterally, No infiltrates or effusions",No acute cardiopulmonary abnormality
+Sarah Williams,Pelvic Ultrasound,"Multiple uterine fibroids (largest 4.5 cm in posterior wall), Thickened endometrium (12 mm), Normal ovaries bilaterally",Multiple uterine fibroids likely contributing to heavy menstrual bleeding and iron deficiency
+Robert Chen,CT Head (Non-Contrast),"Acute hypodense area in left middle cerebral artery territory (frontal and temporal lobes), ASPECTS score: 8, No hemorrhage, No midline shift, Chronic microvascular changes in white matter",Acute left MCA territory infarction - candidate for thrombolysis if within time window
+Robert Chen,CT Angiography Head/Neck,"Left MCA M1 segment occlusion, Patent carotid arteries bilaterally with mild atherosclerotic changes, Patent vertebrobasilar system",Left MCA M1 occlusion - large vessel occlusion stroke
+Robert Chen,ECG,"Atrial fibrillation with ventricular rate 88 bpm, Left ventricular hypertrophy pattern, No acute ST-T changes",Atrial fibrillation - likely cardioembolic source of stroke
+Robert Chen,Echocardiography,"Ejection fraction 48% (mildly reduced), Mild left ventricular hypertrophy, Left atrial enlargement (4.5 cm), No thrombus visualized, Mild mitral regurgitation",Structural heart disease with atrial fibrillation increasing stroke risk
+Robert Chen,Chest X-Ray,"Mild cardiomegaly, Clear lung fields, No acute infiltrates or effusions",Mild cardiomegaly consistent with chronic hypertension and diabetes

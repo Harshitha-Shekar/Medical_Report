@@ -33,3 +33,31 @@ Michael Johnson,Platelets,320 K/uL,N,150-400 K/uL,Leukocytosis with neutrophilia
 Michael Johnson,CRP,45 mg/L,H,<5 mg/L,Leukocytosis with neutrophilia and elevated CRP suggest bacterial infection
 Michael Johnson,Creatinine,1.1 mg/dL,N,0.6-1.2 mg/dL,Leukocytosis with neutrophilia suggest bacterial infection
 Michael Johnson,BUN,18 mg/dL,N,7-20 mg/dL,Leukocytosis with neutrophilia suggest bacterial infection
+Sarah Williams,Hemoglobin,7.8 g/dL,L,12.0-16.0 g/dL,Severe anemia with low MCV and ferritin consistent with iron deficiency anemia
+Sarah Williams,MCV,68 fL,L,80-100 fL,Microcytic anemia pattern consistent with iron deficiency
+Sarah Williams,MCH,22 pg,L,27-31 pg,Hypochromic anemia pattern consistent with iron deficiency
+Sarah Williams,MCHC,29 g/dL,L,32-36 g/dL,Hypochromic anemia pattern consistent with iron deficiency
+Sarah Williams,RBC Count,3.2 M/uL,L,4.0-5.2 M/uL,Decreased red blood cell count consistent with severe anemia
+Sarah Williams,Hematocrit,23.50%,L,36-46%,Low hematocrit consistent with severe anemia
+Sarah Williams,Ferritin,8 ng/mL,L,12-150 ng/mL,Severely depleted iron stores
+Sarah Williams,Serum Iron,18 mcg/dL,L,50-170 mcg/dL,Low serum iron consistent with iron deficiency
+Sarah Williams,TIBC,425 mcg/dL,H,250-400 mcg/dL,Elevated TIBC consistent with iron deficiency anemia
+Sarah Williams,Transferrin Saturation,4%,L,20-50%,Markedly low transferrin saturation indicates iron deficiency
+Sarah Williams,WBC Count,6.2 K/uL,N,4.0-10.0 K/uL,Normal white blood cell count
+Sarah Williams,Platelets,385 K/uL,N,150-400 K/uL,Normal platelet count
+Sarah Williams,Reticulocyte Count,0.80%,L,0.5-2.0%,Low-normal reticulocyte count indicates inadequate bone marrow response
+Robert Chen,Glucose (Random),245 mg/dL,H,70-140 mg/dL,Elevated glucose consistent with uncontrolled diabetes
+Robert Chen,HbA1c,9.80%,H,4.0-5.6%,Poor long-term glycemic control
+Robert Chen,Creatinine,2.1 mg/dL,H,0.6-1.2 mg/dL,Elevated creatinine consistent with chronic kidney disease
+Robert Chen,eGFR,32 mL/min,L,>60 mL/min,Reduced kidney function (CKD Stage 3b)
+Robert Chen,BUN,38 mg/dL,H,7-20 mg/dL,Elevated BUN consistent with impaired renal function
+Robert Chen,K+,5.3 mmol/L,H,3.5-5.0 mmol/L,Mild hyperkalemia associated with kidney disease
+Robert Chen,Na+,134 mmol/L,L,135-145 mmol/L,Mild hyponatremia
+Robert Chen,WBC Count,9.8 K/uL,N,4.0-10.0 K/uL,Normal white blood cell count
+Robert Chen,Hemoglobin,11.2 g/dL,L,12.0-16.0 g/dL,Mild anemia of chronic kidney disease
+Robert Chen,Platelets,265 K/uL,N,150-400 K/uL,Normal platelet count
+Robert Chen,INR,1.1,N,0.9-1.1,Normal coagulation (not on anticoagulation)
+Robert Chen,PTT,32 seconds,N,25-35 seconds,Normal coagulation profile
+Robert Chen,Troponin I,0.02 ng/mL,N,<0.04 ng/mL,Normal cardiac biomarkers - stroke not related to MI
+Robert Chen,LDL Cholesterol,135 mg/dL,H,<100 mg/dL,Elevated LDL cholesterol
+Robert Chen,Total Cholesterol,224 mg/dL,H,<200 mg/dL,Elevated total cholesterol
